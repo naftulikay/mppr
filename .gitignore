@@ -1,0 +1,4 @@
+/.ansible-roles/
+/.vagrant/
+/target/
+**/*.rs.bk
