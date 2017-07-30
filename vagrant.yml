@@ -1,4 +1,7 @@
 ---
 - hosts: all
   become: true
-  roles: [vagrant-rust-dev]
+  roles:
+    - role: vagrant-rust-dev
+      rust_addtl_system_packages:
+        - gcc
