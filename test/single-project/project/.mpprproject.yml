@@ -1,0 +1,10 @@
+---
+stage:
+  build:
+    - echo "build"
+  test:
+    - echo "test"
+  package:
+    - echo "package"
+  deploy:
+    - echo "deploy"
