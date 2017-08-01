@@ -1,3 +1,5 @@
+pub mod plan;
+
 use std::collections::{
     HashSet,
     LinkedList,
@@ -30,23 +32,15 @@ pub enum MpprStage {
     Deploy,
 }
 
-/// Data type for a mppr project representing the actions required for a given stage of a given
-/// mppr project.
+/// A representation of the actions required by a given stage of a given mppr project.
 pub struct MpprProjectStage {
     pub id: MpprStage,
     pub project: Box<MpprProject>,
     pub actions: LinkedList<MpprAction>,
 }
 
-/// Data type for an action or shell command to be executed
+/// An action or shell command to be executed
 pub struct MpprAction {
     pub command: String,
     pub stage: Box<MpprProjectStage>,
-}
-
-/// Data type representing a "plan" for building a mppr repository consisting of a set of actions to
-/// execute sequentially.
-pub struct MpprPlan {
-    pub repo: MpprRepository,
-    pub actions: LinkedList<MpprAction>,
 }
