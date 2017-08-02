@@ -4,6 +4,7 @@ use std::collections::{ BTreeMap, HashSet };
 use std::env;
 use std::error::Error;
 use std::fs;
+use std::hash::Hash;
 use std::io;
 use std::io::Read;
 use std::path::{ Path, PathBuf };
@@ -41,7 +42,7 @@ pub fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, Strin
     }
 }
 
-fn load_yaml_dict(config_file: PathBuf) -> Result<Yaml, String> {
+fn load_yaml_dict(config_file: PathBuf) -> Result<BTreeMap, String> {
     let file_result = fs::File::open(config_file);
 
     if file_result.is_err() {
@@ -70,11 +71,13 @@ fn load_yaml_dict(config_file: PathBuf) -> Result<Yaml, String> {
 
     let yaml_documents = parse_result.unwrap();
 
-    if yaml_documents.length() != 1 {
+    if yaml_documents.len() != 1 {
         return Err(String::from(
             "Unable to load exactly one YAML structure from the file."
         ))
     }
+
+    Ok(*yaml_documents.first().unwrap().clone())
 }
 
 pub fn parse_repository_config(config_file: PathBuf) -> Result<MpprRepository, String> {
