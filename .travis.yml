@@ -4,3 +4,5 @@ dist: trusty
 language: rust
 rust: [stable, nightly]
 matrix: { allow_failures: [{ rust: nightly }] }
+
+notifications: { email: { on_success: never, on_failure: never } }
