@@ -1,3 +1,4 @@
+pub mod parser;
 pub mod plan;
 
 use std::collections::{

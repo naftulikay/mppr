@@ -5,3 +5,4 @@ authors = ["vagrant"]
 
 [dependencies]
 walkdir = "1"
+yaml-rust = "0.3"
