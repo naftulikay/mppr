@@ -2,29 +2,23 @@ use ::data::{ MpprRepository, MpprProject };
 
 use std::collections::HashSet;
 use std::env;
+use std::error::Error;
+use std::fs;
 use std::io;
 use std::path::{ Path, PathBuf };
 
-fn get_repo_config(basedir: PathBuf) -> Option<PathBuf> {
-    let quarry = basedir.join(".mppr.yml");
+use yaml_rust::YamlLoader;
 
-    if quarry.exists() && quarry.is_file() {
-        Some(quarry.clone())
-    } else {
-        None
-    }
-}
-
-fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, String> {
+pub fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, String> {
     // if basedir is undefined, use the process' current working directory
-    let opt_cwd = if basedir.is_some() {
+    let cwd_result = if basedir.is_some() {
         basedir.ok_or(io::Error::new(io::ErrorKind::Other,
             String::from("Undefined base directory.")))
     } else {
         env::current_dir()
     };
 
-    return match opt_cwd {
+    match cwd_result {
         Ok(cwd) => {
             let mut opt_parent: Option<&Path> = Some(&cwd);
 
@@ -40,13 +34,18 @@ fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, String> {
 
             Err(String::from("No mppr repository configuration found."))
         }
-        Err(_) => {
-            Err(String::from("Unable to search base directory."))
+        Err(err) => {
+            Err(String::from(format!("Unable to search base directory: {}", err.description())))
         }
     }
 }
 
-pub fn parse_repository() -> Result<MpprRepository, String> {
+pub fn parse_repository(config_file: PathBuf) -> Result<MpprRepository, String> {
+    // let file_result = fs::File::open(config_file);
+    //
+    // match
+    //
+    // let reader = io::BufRead::new(file);
     Err(String::from("Undefined"))
 }
 
