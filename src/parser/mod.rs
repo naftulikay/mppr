@@ -1,15 +1,13 @@
-use ::data::{ MpprRepository, MpprProject };
+use ::data::config::MpprRepositoryConfig;
+use serde_yaml;
 
-use std::collections::{ BTreeMap, HashSet };
+use std::collections::BTreeMap;
 use std::env;
 use std::error::Error;
 use std::fs;
-use std::hash::Hash;
 use std::io;
 use std::io::Read;
 use std::path::{ Path, PathBuf };
-
-use yaml_rust::{ ScanError, Yaml, YamlLoader };
 
 pub fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, String> {
     // if basedir is undefined, use the process' current working directory
@@ -42,8 +40,8 @@ pub fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, Strin
     }
 }
 
-fn load_yaml_dict(config_file: PathBuf) -> Result<BTreeMap, String> {
-    let file_result = fs::File::open(config_file);
+fn load_repository_config(config_file: PathBuf) -> Result<MpprRepositoryConfig, String> {
+    let file_result = fs::File::open(config_file.clone());
 
     if file_result.is_err() {
         return Err(String::from(format!(
@@ -61,32 +59,33 @@ fn load_yaml_dict(config_file: PathBuf) -> Result<BTreeMap, String> {
         )))
     }
 
-    let parse_result = YamlLoader::load_from_str(contents.as_ref());
+    let config_result: serde_yaml::Result<BTreeMap<String, String>> = serde_yaml::from_str(&contents);
 
-    if parse_result.is_err() {
+    if config_result.is_err() {
         return Err(String::from(format!(
-            "Unable to parse YAML: {}", parse_result.err().unwrap().description()
+            "Unable to parse project configuration: {:?}", config_result.err()
         )))
     }
 
-    let yaml_documents = parse_result.unwrap();
+    // parsing succeeded
+    let config = config_result.unwrap();
 
-    if yaml_documents.len() != 1 {
-        return Err(String::from(
-            "Unable to load exactly one YAML structure from the file."
-        ))
-    }
+    let config_name = if config.contains_key(&String::from("name")) {
+        config.get(&String::from("name")).unwrap().clone()
+    } else {
+        String::from(config_file.parent().unwrap().file_name().unwrap().to_string_lossy())
+    };
 
-    Ok(*yaml_documents.first().unwrap().clone())
+    Ok(MpprRepositoryConfig::new(config_name, config_file.clone()))
 }
 
-pub fn parse_repository_config(config_file: PathBuf) -> Result<MpprRepository, String> {
-    Err(String::from("Undefined"))
-}
-
-pub fn parse_projects(repository: MpprRepository) -> Result<HashSet<MpprProject>, String> {
-    Err(String::from("Undefined"))
-}
+// pub fn parse_repository_config(config_file: PathBuf) -> Result<MpprRepository, String> {
+//     Err(String::from("Undefined"))
+// }
+//
+// pub fn parse_projects(repository: MpprRepository) -> Result<HashSet<MpprProject>, String> {
+//     Err(String::from("Undefined"))
+// }
 
 #[cfg(test)]
 mod test {
@@ -112,11 +111,12 @@ mod test {
     }
 
     #[test]
-    fn test_load_yaml_dict() {
-        let result = parser::load_yaml_dict(PathBuf::from("test/single-project/.mppr.yml"));
+    fn test_load_repository_config() {
+        let result = parser::load_repository_config(
+            PathBuf::from("test/single-project/.mppr.yml"));
 
-        assert!(result.is_ok());
+        let config = result.unwrap();
 
-        let yaml = result.unwrap();
+        assert_eq!(String::from("barnacles"), config.name);
     }
 }
