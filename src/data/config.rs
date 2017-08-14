@@ -40,16 +40,18 @@ impl MpprProjectConfig {
         }
     }
 
-    pub fn name(self) -> String {
+    pub fn name(&self) -> String {
         if self.name.len() > 0 {
-            self.name
+            self.name.clone()
         } else {
-            String::from(self.path.parent().unwrap().strip_prefix(
-                self.repository.path.parent().unwrap()).unwrap().to_string_lossy())
+            let project_dir = self.path.parent().unwrap();
+            let repo_dir = self.repository.path.parent().unwrap();
+
+            String::from(project_dir.strip_prefix(repo_dir).unwrap().to_string_lossy())
         }
     }
 
-    pub fn dependencies(self) -> Vec<String> {
+    pub fn dependencies(&self) -> Vec<String> {
         self.dependencies.clone()
     }
 }

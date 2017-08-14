@@ -160,11 +160,11 @@ mod test {
     fn test_parse_project_config() {
         let repo = config::MpprRepositoryConfig::new(
             String::from("single-project"),
-            PathBuf::from("test/single-project"),
+            PathBuf::from("./test/single-project/.mppr.yml"),
         );
 
         let result = parser::parse_project_config(
-            PathBuf::from("test/single-project/project/.mpprproject.yml"),
+            PathBuf::from("./test/single-project/project/.mpprproject.yml"),
             repo,
         );
 
