@@ -1,13 +1,15 @@
-use ::data::config::MpprRepositoryConfig;
+use ::data::config::{ MpprRepositoryConfig, MpprProjectConfig };
 use serde_yaml;
 
-use std::collections::BTreeMap;
+use std::collections::HashSet;
 use std::env;
 use std::error::Error;
 use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::{ Path, PathBuf };
+
+use walkdir::{ DirEntry, WalkDir };
 
 pub fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, String> {
     // if basedir is undefined, use the process' current working directory
@@ -40,7 +42,7 @@ pub fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, Strin
     }
 }
 
-fn load_repository_config(config_file: PathBuf) -> Result<MpprRepositoryConfig, String> {
+fn parse_repository_config(config_file: PathBuf) -> Result<MpprRepositoryConfig, String> {
     let file_result = fs::File::open(config_file.clone());
 
     if file_result.is_err() {
@@ -49,17 +51,8 @@ fn load_repository_config(config_file: PathBuf) -> Result<MpprRepositoryConfig, 
         )))
     }
 
-    let mut file = file_result.unwrap();
-    let mut contents = String::new();
-    let read_result = file.read_to_string(&mut contents);
-
-    if read_result.is_err() {
-        return Err(String::from(format!(
-            "Unable to read project configuration: {}", read_result.err().unwrap().description()
-        )))
-    }
-
-    let config_result: serde_yaml::Result<BTreeMap<String, String>> = serde_yaml::from_str(&contents);
+    let config_result: serde_yaml::Result<MpprRepositoryConfig> = serde_yaml::from_reader(
+        file_result.unwrap());
 
     if config_result.is_err() {
         return Err(String::from(format!(
@@ -70,25 +63,67 @@ fn load_repository_config(config_file: PathBuf) -> Result<MpprRepositoryConfig, 
     // parsing succeeded
     let config = config_result.unwrap();
 
-    let config_name = if config.contains_key(&String::from("name")) {
-        config.get(&String::from("name")).unwrap().clone()
-    } else {
-        String::from(config_file.parent().unwrap().file_name().unwrap().to_string_lossy())
-    };
-
-    Ok(MpprRepositoryConfig::new(config_name, config_file.clone()))
+    Ok(MpprRepositoryConfig::new(
+        config.name.clone(),
+        config_file.clone()
+    ))
 }
 
-// pub fn parse_repository_config(config_file: PathBuf) -> Result<MpprRepository, String> {
-//     Err(String::from("Undefined"))
-// }
-//
-// pub fn parse_projects(repository: MpprRepository) -> Result<HashSet<MpprProject>, String> {
-//     Err(String::from("Undefined"))
-// }
+fn is_project_file(entry: &PathBuf) -> bool {
+    false
+}
+
+fn parse_project_config(config_file: PathBuf, repository: MpprRepositoryConfig) ->
+        Result<MpprProjectConfig, String> {
+    let file_result = fs::File::open(config_file.clone());
+
+    if file_result.is_err() {
+        return Err(String::from(format!(
+            "Unable to open repository configuration: {}", file_result.err().unwrap().description()
+        )))
+    }
+
+    let config_result: serde_yaml::Result<MpprProjectConfig> = serde_yaml::from_reader(
+        file_result.unwrap()
+    );
+
+    if config_result.is_err() {
+        return Err(String::from(format!(
+            "Unable to parse project configuration: {:?}", config_result.err()
+        )))
+    }
+
+    // parsing succeeded
+    let config = config_result.unwrap().clone();
+
+    let name = config.name();
+    let dependencies = config.dependencies();
+
+    Ok(MpprProjectConfig::new(name, dependencies, config_file.clone(), repository))
+}
+
+pub fn parse_projects(repo: MpprRepositoryConfig) -> Result<HashSet<MpprProjectConfig>, String> {
+    let result: HashSet<MpprProjectConfig> = WalkDir::new(repo.path.clone()).into_iter()
+            .filter_map(|result| {
+        // return all successful paths
+        result.ok()
+    }).map(|entry| {
+        // convert walkdir::DirEntry into a PathBuf
+        PathBuf::from(entry.path())
+    }).filter(|path| {
+        // only include project files
+        is_project_file(path)
+    }).map(|path| {
+        // load the configuration
+        parse_project_config(path.clone(), repo.clone())
+    }).filter_map(|result| result.ok()).collect();
+
+    Ok(result)
+}
 
 #[cfg(test)]
 mod test {
+    use ::data::config;
     use ::parser;
     use std::path::PathBuf;
 
@@ -111,12 +146,31 @@ mod test {
     }
 
     #[test]
-    fn test_load_repository_config() {
-        let result = parser::load_repository_config(
+    fn test_parse_repository_config() {
+        let result = parser::parse_repository_config(
             PathBuf::from("test/single-project/.mppr.yml"));
 
         let config = result.unwrap();
 
         assert_eq!(String::from("barnacles"), config.name);
+        assert_eq!(PathBuf::from("test/single-project/.mppr.yml"), config.path)
+    }
+
+    #[test]
+    fn test_parse_project_config() {
+        let repo = config::MpprRepositoryConfig::new(
+            String::from("single-project"),
+            PathBuf::from("test/single-project"),
+        );
+
+        let result = parser::parse_project_config(
+            PathBuf::from("test/single-project/project/.mpprproject.yml"),
+            repo,
+        );
+
+        let config = result.unwrap();
+
+        assert_eq!(String::from("dude"), config.name().clone());
+        assert_eq!(0, config.dependencies().len());
     }
 }
