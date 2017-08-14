@@ -32,23 +32,20 @@ pub struct MpprProjectConfig {
 impl MpprProjectConfig {
     pub fn new(name: String, dependencies: Vec<String>, path: PathBuf,
             repository: MpprRepositoryConfig) -> MpprProjectConfig {
+        let parent_dir = path.parent().unwrap();
+        let default_name = String::from(parent_dir.file_name().unwrap().to_string_lossy());
+        let name = if name.len() > 0 { name } else { default_name };
+
         MpprProjectConfig {
             name: name,
             dependencies: dependencies,
-            path: path,
+            path: path.clone(),
             repository: repository,
         }
     }
 
     pub fn name(&self) -> String {
-        if self.name.len() > 0 {
-            self.name.clone()
-        } else {
-            let project_dir = self.path.parent().unwrap();
-            let repo_dir = self.repository.path.parent().unwrap();
-
-            String::from(project_dir.strip_prefix(repo_dir).unwrap().to_string_lossy())
-        }
+        self.name.clone()
     }
 
     pub fn dependencies(&self) -> Vec<String> {

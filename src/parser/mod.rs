@@ -6,10 +6,12 @@ use std::env;
 use std::error::Error;
 use std::fs;
 use std::io;
-use std::io::Read;
 use std::path::{ Path, PathBuf };
 
-use walkdir::{ DirEntry, WalkDir };
+use walkdir::WalkDir;
+
+const MPPR_REPOSITORY_FILE: &'static str = ".mppr.yml";
+const MPPR_PROJECT_FILE: &'static str = ".mpprproject.yml";
 
 pub fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, String> {
     // if basedir is undefined, use the process' current working directory
@@ -25,7 +27,7 @@ pub fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, Strin
             let mut opt_parent: Option<&Path> = Some(&cwd);
 
             while let Some(parent) = opt_parent {
-                let quarry = parent.join(".mppr.yml");
+                let quarry = parent.join(String::from(MPPR_REPOSITORY_FILE));
 
                 if quarry.exists() && quarry.is_file() {
                     return Ok(quarry.clone())
@@ -42,7 +44,7 @@ pub fn find_repository_config(basedir: Option<PathBuf>) -> Result<PathBuf, Strin
     }
 }
 
-fn parse_repository_config(config_file: PathBuf) -> Result<MpprRepositoryConfig, String> {
+pub fn parse_repository_config(config_file: PathBuf) -> Result<MpprRepositoryConfig, String> {
     let file_result = fs::File::open(config_file.clone());
 
     if file_result.is_err() {
@@ -70,7 +72,7 @@ fn parse_repository_config(config_file: PathBuf) -> Result<MpprRepositoryConfig,
 }
 
 fn is_project_file(entry: &PathBuf) -> bool {
-    false
+    entry.is_file() && entry.file_name().unwrap() == MPPR_PROJECT_FILE
 }
 
 fn parse_project_config(config_file: PathBuf, repository: MpprRepositoryConfig) ->
@@ -164,13 +166,15 @@ mod test {
         );
 
         let result = parser::parse_project_config(
-            PathBuf::from("./test/single-project/project/.mpprproject.yml"),
+            PathBuf::from("test/single-project/project/.mpprproject.yml"),
             repo,
         );
 
         let config = result.unwrap();
+        let name = config.name().clone();
+        let dependencies = config.dependencies().clone();
 
-        assert_eq!(String::from("dude"), config.name().clone());
-        assert_eq!(0, config.dependencies().len());
+        assert_eq!(String::from("project"), name);
+        assert_eq!(0, dependencies.len());
     }
 }
